@@ -1,0 +1,53 @@
+Drivers:
+111.COM		"1.11 Sound Blaster Card Version": YM3812
+122.COM		"1.22 Sound Blaster Card Version": YM3812
+130-SBP1.COM	"1.30 Sound Blaster Pro Stereo Version": 2xYM3812, gradual stereo panning
+130B-SB.COM	"1.30B Sound Blaster 1.5 and 2.0 Version": YM3812
+132-SBP2.COM	"1.32 SB Pro 2 / SB Pro MCV Version": YMF262, hard stereo panning
+132-SB16.COM	"1.32 Sound Blaster 16 Version": YM3812
+133-SBP6.COM	"1.33 SB16 / SB Pro 2 / MCV Pro 2": YM3812
+134-SB.COM	"1.34 SB 1.5 / SB 2.0 / MCV 2.0": YM3812
+134-SBP6.COM	"SB16 / SB Pro 2 / MCV Pro 2": YM3812
+
+Detailed differences:
+111.COM ->122.COM:
+- Add "fade" driver function and "main volume" functionality
+- Add three additional internal driver functions (with negative function number)
+- The "current song position" that is returned via driver function now always points to the beginning of an event, so that seeking always works.
+- The "Vibrato depth" and "Tremolo depth" bits of register $BD are now always set; they were always clear before.
+- Corrected an error setting the instrument of percussion instruments.
+- Operators are now reset before setting the rhythm mode instead of afterwards.
+- The Int 9 handler, which is written to silence the chip when pressing Ctrl+Alt+Del, now queries the correct keyboard scancode.
+- Slight correction to OPL write delay timing calculation.
+
+122.COM->130-SBP1.COM (except for the obvious stereo functionality):
+- Add "loop count" functionality and driver function.
+- BUG: main volume is no longer applied properly, breaking fades
+- MIDI velocities are now assumed to be linear, were previously assumed to be logarithmic. The conversion table used effectively almost completely removes any discernable note velocity differences.
+- Add a lower boundary for the OPL write delay timing.
+- Now use the BLASTER environment variable to set the base I/O address.
+
+130-SBP1.COM->130B-SB.COM (except for the obvious lack of stereo functionality):
+- Use the linear->logarithmic volume table for percussion notes as well.
+
+130B-SB.COM->132-SBP2.COM (except for the obvious stereo functionality and card-specific valid range of BLASTER=A2xx value):
+- A different assembler was used, that uses slightly different instruction encodings
+
+132-SBP2->SB.COM->132-SB16.COM (except for card-specific valid range of BLASTER=A2xx value):
+- NOTHING! The "Sound Blaster 16" driver is basically an OPL2 driver that just says "Sound Blaster 16", so no stereo support at all!
+
+132-SB16.COM->133-SBP6.COM (except for card-specific valid range of BLASTER=A2xx value):
+- Strange junk procedure (just PUSH AX/POP AX) after velocity table.
+- Disable interrupts when writing to OPL chip.
+- Add line feeds to a few messages.
+- Allow I/O addresses outside the $2xx range (probably for MCV card).
+
+133-SBP6.COM->134-SB.COM (except for card-specific valid range of BLASTER=A2xx value):
+- Finally update the internal version number to a correct value (a little bit late...)
+- Correct a bug in the "silence" procedure that wrote to an invalid register number.
+- "silence" procedure: sets the release time of operators $10+ to maximum, apparently to prevent hanging notes on instruments with long release times, or something like that.
+  Because this procedure is called when pausing a song, and these operators' register content is not automatically restored when continuing after pause,
+  this introduces the bug that instruments become corrupted when continuing after pause.
+
+Note: The .ASM files, when assembled with MASM 6.00A, will produce 100% byte-identical .COM files compared to the originals, EXCEPT for the two 1.34 drivers, because
+      Creative used an (unknown) assembler that uses a different encoding for the CMP AL, AH/CMP AH,AL instructions.
