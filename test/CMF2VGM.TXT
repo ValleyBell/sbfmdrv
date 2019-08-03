@@ -1,0 +1,119 @@
+CMF2VGM  Version 1.12  by NewRisingSun
+--------------------------------------
+
+CMF2VGM converts .CMF format files ("Creative Music File") into .VGM files.
+It uses Creative's original SBFMDRV.COM to translate the MIDI-like .CMF file
+data into OPL2/2xOPL2/OPL3 chip writes, which are logged into a .VGM file.
+
+Usage:
+1. Decide whether you want Sound Blaster 1.0/1.5, Sound Blaster Pro 1
+   or Sound Blaster Pro 2/Sound Blaster 16 playback, and select the
+   appropriate version of SBFMDRV.COM that is included in the CMF2VGM
+   distribution.
+
+   Sound Blaster 1.0/1.5:       111.COM/122.COM/130B.COM/134.COM
+   Sound Blaster Pro 1:         130.COM
+   Sound Blaster Pro 2/16:      132-02.COM/132-10.COM/133.COM
+
+   See the comments below on the audible differences between the drivers.
+
+2. Create a new directory and copy CMF2VGM.EXE, the correct version of
+   SBFMDRV.COM, and the .CMF files you want to convert into that directory.
+
+3. Run DOSBox and mount that directory you just created using the MOUNT
+   command.
+
+4. Switch DOSBox' FM emulation to the correct Sound Blaster type:
+
+   Sound Blaster 1.0/1.5:       sbtype sb1
+   Sound Blaster Pro 1:         sbtype sbpro1
+   Sound Blaster Pro 2/16:      sbtype sbpro2
+
+   Even as CMF2VGM converts as fast as the host machine allows and therefore
+   does not actually output music data to the emulated Sound Blaster, some
+   versions of SBFMDRV will still try to detect the particular card type used
+   and adjust their behavior accordingly. CMF2VGM also detects the card type
+   to determine whether to write OPL2, 2xOPL2 or OPL3 commands to the .VGM
+   file. If you forget to set the card type correctly, DOSBox by default will
+   emulate a Sound Blaster 16, so your .VGM files will be set up to use an
+   OPL3 (YMF262) even though only OPL2 (YM3812) features are used.
+
+5. Run the correct version of SBFMDRV.COM (see point 1). The driver will
+   exit but remain in memory.
+
+6. Run CMF2VGM with the name of the .CMF file(s) to be converted, e.g.
+   CMF2VGM *.CMF. CMF2VGM will silently play the file through SBFMDRV and log
+   the FM register writes to files with the same path/name stems and a .VGM
+   name extension, e.g. STARFM.VGM.
+
+7. That's it! The resulting .VGM files should require no trimming whatsoever.
+   You may now add tags and run vgm_cmp to reduce its size by removing
+   superfluous chip writes.
+
+Background:
+The .CMF file format was created by Creative Labs as a simplification of
+AdLib's Visual Composer (.ROL) format. .ROL files have 44 tracks (notes,
+instrument changes, volume changes, pitch change for eleven voices) and store
+instrument data in a separate .BNK file. (The earliest versions did not even
+support .BNK files, but stored each individual instrument in an .INS file!)
+.CMF files contain only one track and embed the instrument data in the song
+file itself, creating a file format that is much easier to handle.
+
+.CMF itself supports all .ROL features except volume changes to an already-
+playing note, which is used rarely. To my knowledge, Creative Labs never
+released a music composition utility that directly created .CMF files.
+Instead, they just provided a ROL2CMF utility so that people could compose
+using the well-received AdLib Visual Composer, then convert the resulting
+.ROL files into the .CMF format.
+
+Comments:
+Unfortunately, .CMF files will sound different in almost every version of
+SBFMDRV.COM. Only the original versions 1.11 and 1.22 will reproduce the
+volumes of .ROL files converted to .CMF somewhat accurately. Starting with
+version 1.30, the driver would break the application of note velocities,
+which results in an output almost completely devoid of any audible volume
+changes (check out Jill of the Jungle's FUNKY.DDT). Version 1.11 has a bug
+handling very low velocity levels and thus should not be used either.
+
+Versions 1.30 to 1.32-02 will support stereo playback on a Sound Blaster Pro,
+but since the .CMF format itself has no provisions for panning information,
+the instruments are just placed at some default position that sounds good
+with some files and terrible with others. I consider it more of a gimmick
+than a feature. Apparently, Creative Labs had the same thought, and removed
+stereo support from versions 1.32-10 and later.
+
+For these reasons, I strongly recommend setting DOSBox to sbtype=sb1, and
+using SBFMDRV version 1.22 for all conversions.
+
+Files included:
+CMF2VGM.TXT     This file.
+CMF2VGM.EXE     CMF playback and VGM conversion utility.
+PLAYCMF.EXE     Simple CMF playback utility to show that almost all of the
+                action is in SBFMDRV.
+SRC/*.ASM       Source code for MASM 6.0. Must run ML with "/link /cp:1"!
+SRC/*.INC       dito.
+SRC/FMDRV.TXT   Information on the SBFMDRV application interface.
+SBFMDRV/
+ 111.COM        SBFMDRV version 1.11 for Sound Blaster 1.0/1.5.
+ 122.COM        SBFMDRV version 1.22 for Sound Blaster 1.0/1.5/MCV.
+ 130.COM      **SBFMDRV version 1.30 for Sound Blaster Pro 1.
+ 130B.COM      *SBFMDRV version 1.30B for Sound Blaster 1.0/1.5/2.0.
+ 132-02.COM */**SBFMDRV version 1.32 dated 1992/02 for Sound Blaster Pro 2.
+ 132-10.COM    *SBFMDRV version 1.32 dated 1992/10 for Sound Blaster Pro 2/16.
+ 133.COM       *SBFMDRV version 1.33 for Sound Blaster Pro 2/16.
+ 134.COM       *SBFMDRV version 1.34 for Sound Blaster Pro 2/16.
+
+  * Driver applies note velocities incorrectly.
+ ** Driver supports stereo output (with default panning)
+
+Changelog:
+1.00 2017-03-26 Initial release.
+1.01 2017-03-27 Play channels even when the .CMF file's channel mask says
+                that they are unused. Remedies missing voices in Math
+                Rescue's SONG2 and SONG3.
+1.10 2017-03-29 Now converts without playback as fast as the emulated machine
+                allows. Now accepts multiple files on the command line using
+                wildcards (CMF2VGM *.CMF).
+1.11 2017-04-06 Now comes with SBFMDRV v1.22, which is now the preferred
+                version.
+1.12 2017-10-10 Corrections to documentation.
