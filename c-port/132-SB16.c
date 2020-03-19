@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>	// for puts()
 #include <stdtype.h>
+#include <stdlib.h>	// for getenv()
 
 // port functions from main.c
 UINT8 in(UINT16 port);
@@ -21,7 +22,7 @@ void out(UINT16 port, UINT8 data);
 #define CMD_UNINSTALL	2
 
 
-#define MAX_FN			15
+#define MAX_FN			16
 #define MAX_FN_INTERNAL	5
 
 #define MAKE_VERSION(major, minor)	(((major) << 8) | ((minor) << 0))
@@ -87,6 +88,7 @@ UINT16 fnSetSysexHandler(void* ptr);
 UINT8* fnGetChMaskPtr(void);
 const UINT8* fnGetSongPosition(void);
 UINT16 fnSetFade(UINT16 mainVol, UINT16 fadeVol, UINT16 volInc, UINT16 stepTicks);
+INT16 fnSetLoopCount(INT16 newLoopCount);
 void* fnGetChainedVector(UINT16 vector);
 UINT32 fnGetChainedCount(void);
 UINT8* fnGetActivePtr(void);
@@ -113,6 +115,9 @@ static UINT8 makeResident(void);
 static void setVectors8and9(void);
 void cmdInstall(void);
 void cmdUninstall(void);
+static int parseEnv(void);
+static const char* checkEnvParam(char chrSearch, const char* str);
+static UINT16 readHexNumber(const char* str);
 
 
 static void** INT_VECTORS = NULL;
@@ -121,8 +126,9 @@ static UINT8 exitServiceCode = DOS_TERMINATE;
 static const char signature[6] = "FMDRV";
 static UINT16 ioBase = 0x220;
 static UINT8 vectorNum = 0x80;
-static const UINT16 internalVersion = MAKE_VERSION(1, 22);
+static const UINT16 internalVersion = MAKE_VERSION(1, 21);
 
+static INT16 loopCount;
 static void* chainedVector08;	// previous timer interrupt vector
 static void* prevVector09;
 static const UINT8* ptrTimbres;	// instrument lib. pointer
@@ -239,6 +245,7 @@ static const FN_PTR fnTable[MAX_FN] =
 	fnGetChMaskPtr,
 	fnGetSongPosition,
 	fnSetFade,
+	fnSetLoopCount,
 };
 static const FN_PTR fnTableInternal[MAX_FN_INTERNAL] =
 {
@@ -327,12 +334,20 @@ static const UINT16 FIndex2FNum[12 * 0x40] =	// 12 semitones per octave, 64 frac
 	0x2A4, 0x2A5, 0x2A5, 0x2A6, 0x2A6, 0x2A7, 0x2A8, 0x2A8, 0x2A9, 0x2AA, 0x2AA, 0x2AB, 0x2AB, 0x2AC, 0x2AD, 0x2AD,
 };
 
+static INT16 velocityTable[0x11] =
+{
+	-16,-14,-12,-10, -8, -4, -2,  0,
+	 +1, +2, +3, +4, +5, +6, +7, +8,
+	 0x1E9C	// value from program code, incorrectly read for note velocities 7C..7F
+};
+
+static const char mProductName[] = "Sound Blaster 1.50 / 2.00";
 static const char mTitle[] =
-	"Creative Sound Blaster FM-Driver  Version 1.22\r\n"
-	"Copyright (c) Creative Labs, Inc., 1990.  All rights reserved.\r\n"
-	"Copyright (c) Creative Technology Pte Ltd, 1990.  All rights reserved.\r\n"
+	"Creative Sound Blaster FM-Driver  Version 1.32\r\n"
+	"Copyright (c) Creative Labs, Inc., 1990-1991.  All rights reserved.\r\n"
+	"Copyright (c) Creative Technology Pte Ltd, 1990-1991.  All rights reserved.\r\n"
 	"\n"
-	"\tSound Blaster Card Version\n"
+	"\tSound Blaster 16 Version\n"
 	"\r\n";
 static const char mCRLF[] = "\r\n";
 static const char mAlready[] = "Driver already installed.";
@@ -341,11 +356,12 @@ static       char mInstalled[] = "Driver installed at INT 00H.";
 static const char mRemoved[] = "Driver removed.";
 static const char mSBFMDRV[] = "SBFMDRV: ";
 static const char mError0[] = "Error 0000: Unknown command switch.";
-static const char mError1[] = "Error 0001: Sound Blaster Card does not exist at the I/O address specified.";
+static const char mError1[] = "Error 0001: Sound card  does not exist at the I/O address specified.";
 static const char mError2[] = "Error 0002: FM feature not available on the card.";
 static const char mError3[] = "Error 0003: No interrupt vector available.";
 static const char mError4[] = "Error 0004: Driver does not install previously.";
 static const char mError5[] = "Error 0005: Other program exist after SBFMDRV.";
+static const char mError6[] = "Error 0006: BLASTER environment string does not exist.";
 
 // dx/ax - ptr
 // bx - vector
@@ -462,7 +478,7 @@ static void setVoiceTimbre(UINT8 insID, UINT8 voiceID)
 		tlData = insPtr[2];	// get TL/KSR (modulator)
 	voiceTimbreKSL[voiceID] = tlData & 0xC0;	// save KSR bits
 	voiceTimbreVol[voiceID] = 0x3F - (tlData & 0x3F);	// get volume
-	voiceTimbreScaledVol[voiceID] = (voiceTimbreVol[voiceID] * mainVolume + 0x80) >> 8;
+	voiceTimbreScaledVol[voiceID] = voiceTimbreVol[voiceID];
 	if (! rhythmMode || voiceID <= 6)
 	{
 		reg = voice2Op[voiceID] + 0x20;	// register 20
@@ -587,6 +603,7 @@ static void resetChannels(void)
 
 void fnResetPlayer(void)
 {
+	loopCount = 0;
 	mainVolume = 0xFF;
 	targetVolume = 0xFF;
 	stopPlaying();
@@ -659,7 +676,15 @@ static void doSongData(void)
 		}
 		midiCmdTable[midiCmd]();
 		if (playStatus == 0)
+		{
+			//checkLoop:
+			if (loopCount == 0)
+				break;
+			fnStartPlaying(songData);
+			if (loopCount != -1)
+				loopCount --;
 			break;
+		}
 		waitInterval = getVarLen();
 	} while(waitInterval == 0);
 	waitInterval --;
@@ -709,8 +734,7 @@ static void midiNoteOn(void)
 {
 	UINT8 voice;	// bx
 	UINT8 al;
-	UINT8 ah;
-	UINT8 cl;
+	INT16 ax;
 	UINT16 freq;	// ax
 	
 	midiKey = *songPosition;	songPosition ++;
@@ -736,9 +760,15 @@ static void midiNoteOn(void)
 	if (al != midiCh)
 		setVoiceTimbre(midiChProgram[midiCh], voice);
 	
-	cl = midiVelocity | 0x80;
-	ah = (voiceTimbreScaledVol[voice] * cl) >> 8;
-	al = (0x3F - ah) | voiceTimbreKSL[voice];
+	// convert MIDI velocity from linear to log scale
+	// Note: Due to rounding applied here, the driver reads data beyond the actual
+	//       table (0x10 elements) for velocities 0x7C..0x7F.
+	ax = velocityTable[(midiVelocity + 0x04) / 0x08] + voiceTimbreScaledVol[voice];
+	if (ax < 0)
+		ax = 0;
+	else if (ax > 0x3F)
+		ax = 0x3F;
+	al = (0x3F - (UINT8)ax) | voiceTimbreKSL[voice];
 	writeOPL(0x43 + voice2Op[voice], al);
 	
 	freq = startMelodicNote(voice);
@@ -756,15 +786,17 @@ static void startPercNote(UINT8 channel)
 	UINT8 tlReg;	// ah
 	UINT16 freq;	// ax
 	UINT8 al;
-	UINT8 ah;
-	UINT8 cl;
+	INT16 ax;
 	
 	percChn = channel - 5;
 	valueBD |= midiCh2BDBit[percChn - 6];
 	
-	cl = midiVelocity | 0x80;
-	ah = (voiceTimbreScaledVol[percChn] * cl) >> 8;
-	al = (0x3F - ah) | voiceTimbreKSL[percChn];
+	ax = velocityTable[(midiVelocity + 0x04) / 0x08] + voiceTimbreScaledVol[percChn];
+	if (ax < 0)
+		ax = 0;
+	else if (ax > 0x3F)
+		ax = 0x3F;
+	al = (0x3F - (UINT8)ax) | voiceTimbreKSL[percChn];
 	
 	tlReg = 0x40 + voice2OpPerc[percChn - 6];
 	if (percChn == 6)
@@ -1177,6 +1209,15 @@ UINT16 fnSetFade(UINT16 mainVol, UINT16 fadeVol, UINT16 volInc, UINT16 stepTicks
 	return targetVolume;
 }
 
+// ax - loop count
+// returns in ax
+INT16 fnSetLoopCount(INT16 newLoopCount)
+{
+	INT16 oldLoopCnt = loopCount;
+	loopCount = newLoopCount;
+	return oldLoopCnt;
+}
+
 // ax - vector
 // returns in [bp+6] / ax
 void* fnGetChainedVector(UINT16 vector)
@@ -1356,6 +1397,8 @@ static void measureTiming(void)
 	// -- enable interrupts --
 	setVector(8, chainedVector08);
 	indexDelay = (delayCntr * 3 / 2) >> 10;	// delay for register write in CPU cycles
+	if (indexDelay < 0x50)
+		indexDelay = 0x40;	// compare with 80, set to 64 - no idea why
 	dataDelay = indexDelay * 7;
 	ioBase += 8;
 	
@@ -1462,18 +1505,27 @@ static UINT16 parseCommandLine(const char* cmdLine)
 
 int DOS_main(const char* command_line)
 {
+	int retVal;
 	UINT16 cmdID;
 	
 	puts(mTitle);
-	cmdID = parseCommandLine(command_line);
-	if (cmdID > 0)
+	retVal = parseEnv();
+	if (retVal != 0)
 	{
-		if (cmdID == 1)
-			cmdInstall();
-		else if (cmdID == 2)
-			cmdUninstall();
+		puts(mError6);
 	}
-	puts("\r\n");
+	else
+	{
+		cmdID = parseCommandLine(command_line);
+		if (cmdID > 0)
+		{
+			if (cmdID == 1)
+				cmdInstall();
+			else if (cmdID == 2)
+				cmdUninstall();
+		}
+		puts("\r\n");
+	}
 	// at this point we call either DOS_TERMINATE or DOS_STAY_RESIDENT, depending on the value of exitServiceCode
 	return 0;
 }
@@ -1652,4 +1704,79 @@ void cmdUninstall(void)
 	// -- free sound driver memory here --
 	puts(mRemoved);
 	return;
+}
+
+static int parseEnv(void)
+{
+	const char* blasterVar;
+	const char* portStr;
+	UINT16 port;
+	
+	blasterVar = getenv("BLASTER");
+	if (blasterVar == NULL)
+		return 1;
+	portStr = checkEnvParam('A', blasterVar);
+	if (portStr == NULL)
+		return 2;
+	port = readHexNumber(portStr);
+	if (port == -1)
+		return 2;
+	
+	if ((port & 0xFF00) != 0x0200)
+		return 2;
+	port &= 0xFFF0;
+	if (port > 0x280 || port < 0x210)
+		return 2;
+	ioBase = port;
+
+	return 0;
+}
+
+static const char* checkEnvParam(char chrSearch, const char* str)
+{
+	while(*str != '\0')
+	{
+		char letter = *str;
+		str ++;
+		if (letter >= 'a' && letter <= 'z')
+			letter -= 0x20;
+		if (letter == chrSearch)
+			return str;
+	}
+	return NULL;
+}
+
+static UINT16 readHexNumber(const char* str)
+{
+	char letter;	// al
+	UINT16 number;	// dx
+	
+	letter = *str;
+	str ++;
+	if (letter == ' ' || letter == '\0')
+		return -1;
+	
+	number = 0;
+	do
+	{
+		number <<= 4;
+		if (letter >= '0' && letter <= '9')
+		{
+			number |= (letter - '0');
+		}
+		else
+		{
+			if (letter >= 'a' && letter <= 'z')
+				letter -= 'a';	// broken, should subtract 0x20
+			if (letter < 'A' || letter > 'F')
+				return -1;
+			number |= (letter - 'A' + 0x0A);
+		}
+		letter = *str;
+		str ++;
+		if (letter == ' ')
+			break;
+	} while(letter != ' ' || letter != '\0');
+	
+	return number;
 }

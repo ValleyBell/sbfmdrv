@@ -26,10 +26,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="player-simple.c">
+    <ClCompile Include="134-SB.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
-    <ClCompile Include="122.c">
+    <ClCompile Include="player-opl2.c">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

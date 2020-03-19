@@ -4,5 +4,6 @@
     <LocalDebuggerCommandArguments>01.cmf 08.cmf 15.cmf FUNKY.CMF HELLOMY.CMF VOLTEST.CMF VOLTEST2.CMF ZAP_RAP.CMF</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerWorkingDirectory>"D:\Emulatoren\DOSBox-0.74\Spiele\CMFTEST\"</LocalDebuggerWorkingDirectory>
+    <LocalDebuggerEnvironment>BLASTER=A220 I7 D1 T1 $(LocalDebuggerEnvironment)</LocalDebuggerEnvironment>
   </PropertyGroup>
 </Project>

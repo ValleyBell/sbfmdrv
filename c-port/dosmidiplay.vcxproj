@@ -24,8 +24,8 @@
     <ClInclude Include="..\libvgm\stdtype.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="122.c" />
-    <ClCompile Include="player-simple.c" />
+    <ClCompile Include="134-SB.c" />
+    <ClCompile Include="player-opl2.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{5CB6A553-019D-4048-AD7B-C2B009A912A4}</ProjectGuid>

@@ -309,25 +309,25 @@ static const UINT16 FIndex2FNum[12 * 0x40] =	// 12 semitones per octave, 64 frac
 	0x2A4, 0x2A5, 0x2A5, 0x2A6, 0x2A6, 0x2A7, 0x2A8, 0x2A8, 0x2A9, 0x2AA, 0x2AA, 0x2AB, 0x2AB, 0x2AC, 0x2AD, 0x2AD,
 };
 
-static const char* mTitle =
+static const char mTitle[] =
 	"Creative Sound Blaster FM-Driver  Version 1.11\r\n"
 	"Copyright (c) Creative Labs, Inc., 1990.  All rights reserved.\r\n"
 	"Copyright (c) Creative Technology Pte Ltd, 1990.  All rights reserved.\r\n"
 	"\n"
 	"\tSound Blaster Card Version\n"
 	"\r\n";
-static const char* mCRLF = "\r\n";
-static const char* mAlready = "Driver already installed.";
-static       char* mIOAddress = "Driver's I/O address set at 220 Hex\r\n";
-static       char* mInstalled = "Driver installed at INT 00H.";
-static const char* mRemoved = "Driver removed.";
-static const char* mSBFMDRV = "SBFMDRV: ";
-static const char* mError0 = "Error 0000: Unknown command switch.";
-static const char* mError1 = "Error 0001: Sound Blaster Card does not exist at the I/O address specified.";
-static const char* mError2 = "Error 0002: FM feature not available on the card.";
-static const char* mError3 = "Error 0003: No interrupt vector available.";
-static const char* mError4 = "Error 0004: Driver does not install previously.";
-static const char* mError5 = "Error 0005: Other program exist after SBFMDRV.";
+static const char mCRLF[] = "\r\n";
+static const char mAlready[] = "Driver already installed.";
+static       char mIOAddress[] = "Driver's I/O address set at 220 Hex\r\n";
+static       char mInstalled[] = "Driver installed at INT 00H.";
+static const char mRemoved[] = "Driver removed.";
+static const char mSBFMDRV[] = "SBFMDRV: ";
+static const char mError0[] = "Error 0000: Unknown command switch.";
+static const char mError1[] = "Error 0001: Sound Blaster Card does not exist at the I/O address specified.";
+static const char mError2[] = "Error 0002: FM feature not available on the card.";
+static const char mError3[] = "Error 0003: No interrupt vector available.";
+static const char mError4[] = "Error 0004: Driver does not install previously.";
+static const char mError5[] = "Error 0005: Other program exist after SBFMDRV.";
 
 // dx/ax - ptr
 // bx - vector

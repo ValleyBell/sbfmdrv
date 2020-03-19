@@ -1,4 +1,3 @@
-// TODO: VGM logging
 #ifdef _WIN32
 #include <windows.h>
 #include <conio.h>
