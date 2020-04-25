@@ -626,7 +626,7 @@ INT16 fnStartPlaying(const UINT8* songPtr)
 		return -2;
 	songData = songPtr;
 	songPosition = songPtr;
-	memset(midiChBend, 0x00, 0x10);
+	memset(midiChBend, 0x00, 0x10 * 0x02);
 	memset(voiceMIDICh, 0xFF, 9);
 	waitInterval = getVarLen();
 	songSeekablePosition = songPosition;
@@ -915,8 +915,8 @@ static void ctrlBendUp(UINT8 val)
 	INT16 pbFreq;	// ax
 	UINT8 voice;	// bx
 	
-	pbFreq = (INT8)val >> 2;
-	midiChBend[midiCh] = pbFreq;	// TODO: something here is wrong
+	pbFreq = (INT8)val >> 2;	// [bug] range is 1/2 semitone, should be >>1 for full semitone
+	midiChBend[midiCh] = pbFreq;
 	for (voice = 0; voice < maxVoice; voice ++)
 	{
 		if (voiceMIDICh[voice] == midiCh)
@@ -1056,7 +1056,7 @@ void isr08(void)
 void isr09(void)
 {
 	UINT8 a = in(0x60);
-	if (! (a & 0x80) && a != 0x53)
+	if (! (a & 0x80) && a != 83)
 	{
 		//a = interrupt(0x16, 2);	// get keyboard shift status
 		if ((a & 0x0C) == 0x0C)

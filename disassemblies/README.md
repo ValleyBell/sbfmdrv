@@ -3,7 +3,8 @@
 This folder contains disassemblies of all known versions of the SBFMDRV.COM CMF sound driver.
 Huge thanks to NewRisingSun for making them!
 
-For version differences, read VERSIONS.TXT.
+For version differences, see VERSIONS.TXT. (notes by NewRisingSun)  
+For a list of bugs that the drivers have, see BUGS.md.
 
 
 Version 1.20 was disassembled by Valley Bell.

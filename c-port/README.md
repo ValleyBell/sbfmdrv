@@ -14,7 +14,7 @@ But you will need to get [libvgm](https://github.com/ValleyBell/libvgm/), compil
 ## Players and SBFMDRV versions
 
 - player-opl2 (OPL2): 1.11, 1.20 SDK, 1.22, 1.30B SB, 1.32 SB16, 1.33 SBP6, 13.4 SB, 1.34 SBP6
-- player-opl2x2 (Dual OPL2): 1.30B SBP1
+- player-opl2x2 (Dual OPL2): 1.30 SBP1
 - player-opl3 (OPL3): 1.32 SBP2
 
 
